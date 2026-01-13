@@ -1,0 +1,153 @@
+# Project Name: Headless WhatsApp Interface (Internal CRM)
+#### 1. High-Level Concept
+A custom, web-based chat interface that acts as the "remote control" for a headless WhatsApp Business API number. The system decouples the messaging logic (Meta) from the interface (Next.js), using a database (Supabase) as the single source of truth.
+Core Philosophy: "The Interface is just a View; The Database is the Chat."
+#### 2. Technical Stack & Architecture
+- Provider: WhatsApp Official Cloud API (Meta).
+- Orchestrator (Middleware): n8n (Self-hosted, already exists).
+- Backend / State: Supabase (Postgres Database + Realtime Engine + Storage).
+- Frontend: Next.js (App Router), TailwindCSS, Shadcn/UI.
+- Auth: Supabase Auth (Simple email/password or Magic Link for internal access).
+#### 3. Data Strategy (The "Brain")
+The application relies on two primary tables and one storage bucket.
+A. Database Schema
+1. contacts
+	- phone_number (Primary Key, E.164 format)
+	- profile_name (Synced from WhatsApp profile)
+	- last_interaction_at (Timestamp, for sorting)
+	- session_status (Enum: active, expired) — Calculated based on 24h window.
+	- unread_count (Integer)
+2. messages
+	- id (UUID)(UNIQE)
+	- contact_phone (Foreign Key)
+	- direction (Enum: inbound, outbound)
+	- type (Enum: text, image, template)
+	- body (Text content)
+	- media_url (Link to Supabase Storage, if image)
+	- meta_id (The WhatsApp Message ID, for deduplication)
+	- status (Enum: sent, delivered, read, failed)
+	- created_at (Timestamp)
+3. automation logs
+- id: UUID
+- workflow_name: Text (e.g., "New Lead Follow-up")
+- contact_phone: Text
+- status: Enum (success, failed)
+- error_detail: Text (If failed, why? e.g., "Template limit exceeded")
+- cost_estimate: Float (Calculate roughly: Marketing = 0.15 NIS, Service = 0.08 NIS)
+- executed_at: Timestamp
+
+B. File Storage
+- Bucket: whatsapp-media
+- Why: Meta API media URLs expire after a few hours. We must download them via n8n and re-upload here for permanent internal history.
+#### 4. Functional Modules
+#### Module A: The Inbound Pipeline (n8n)
+- Trigger: Webhook from Meta (New Message).
+- Process:
+	1. Deduplication: Check if meta_id exists.
+	2. Contact Upsert: If number is new, create contact; else update last_interaction_at.
+	3. Media Handling: If message contains image/audio → Download binary → Upload to Supabase Storage → Get Public Link.
+	4. Persist: Insert row into messages table.
+	5. Notification Routing:
+		- Logic: IF direction = inbound, THEN trigger "Admin Alert."
+		- Action: Send a WhatsApp message to your Personal Primary Number via the API: "🔔 New msg from [Name]: [Body segment]…"
+- Add Logic to separate "New Messages" from "Status Updates" (Insert vs Update).
+#### Module B: The Realtime Sync (Supabase)
+- The Frontend does not poll the API. It subscribes to supabase.channel('messages').
+- When n8n inserts a row, the UI updates instantly.
+#### Module C: The Outbound Engine (Frontend -> Meta)
+- Text Messages: Frontend calls Next.js API Route → POST to Meta Graph API.
+- Template Messages: Frontend allows selecting a pre-approved template (required if session_status is expired).
+- On Success: The API Route manually inserts the outbound message into Supabase to update the UI.
+#### 
+Here is the completely rewritten User Interface (UI) Module for your Technical Design Document. It integrates the manual messaging requirements with the new automation tracking ("Control Tower") features.
+You can copy-paste this section directly into your master plan.
+#### 5. User Interface (UI) Specification
+Framework: Next.js (App Router), TailwindCSS, Shadcn/UI, Lucide React (Icons).
+State Management: Supabase Realtime (Subscribed to messages and automation_logs).
+The application is divided into three main views: Inbox, Control Tower (Activity), and Settings.
+#### View A: The Unified Inbox (Operations)
+The primary screen for manual customer service and monitoring individual conversations.
+1. Layout: Three-Pane Design
+- Left Rail: Global Navigation (Icons: Inbox, Activity, Settings).
+- Middle Panel: Contact List (Width: 350px).
+- Right Panel: Active Conversation (Flex-grow).
+2. Contact List (Middle Panel)
+- Search Bar: Filter by name or phone number.
+- List Item Component:
+	- Avatar: Initials or Profile Pic.
+	- Name/Number: Bold text.
+	- Snippet: Last message content (truncated).
+	- Metadata: Timestamp of last activity.
+	- Status Badges:
+		- Unread (Red Dot): unread_count > 0.
+		- Open Session (Green Dot): Last inbound message < 24h ago.
+		- Closed Session (Grey Dot): Last inbound message > 24h ago.
+3. Active Conversation (Right Panel)
+- Header:
+	- Contact Name & Phone.
+	- Session Timer: A countdown or progress bar indicating time remaining in the 24h window.
+- Message Stream (ScrollArea):
+	- Renders the messages table.
+	- Inbound Bubble (Left, White): Standard text.
+	- Outbound Bubble (Right, Green-50):
+		- Context Chip: If source != manual_ui, display a small badge at the top of the bubble: 🤖 [Workflow Name].
+		- Status Checkmarks: Grey (Sent) → Blue (Read).
+- Input Area (Dynamic Component):
+	- State 1: Session Active (<24h): Standard Textarea + "Send" button + Attachment Icon.
+	- State 2: Session Expired (>24h):
+		- Input is Disabled and greyed out.
+		- Overlay Text: "Window Closed. Send a Template to reopen."
+		- Primary Action: "Select Template" Button (Opens a modal to choose pre-approved Meta templates).
+#### View B: The Control Tower (Observability)
+A dashboard to track the health of n8n automations, costs, and errors.
+1. The "Pulse" (Top Cards)
+- Total Messages (24h): Count from automation_logs.
+- Error Rate: Percentage of logs where status = failed.
+- Estimated Cost (Month): Sum of cost_estimate column (e.g., "₪ 45.00").
+2. The Live Feed (Data Table)
+- Subscribes to automation_logs.
+- Columns:
+	- Time: executed_at (e.g., "10:42 AM").
+	- Workflow: workflow_name (e.g., "Abandoned Cart", "Welcome Bot").
+	- Target: contact_phone (Masked: +972...567).
+	- Status: Badge (Green Success / Red Failed).
+	- Details: (On hover) Show error_detail or meta_data.
+- Filters: Dropdown to filter by "Status: Failed" to quickly debug broken flows.
+#### View C: Settings & Bridge
+Configuration for the system logic.
+1. Notification Bridge
+- Field: "Admin Alert Number".
+- Action: Updates a value in the DB (or n8n environment variable) that determines where the "New Message" alerts are sent.
+- Test Button: "Send Test Ping" (Triggers n8n to send a message to your real phone).
+2. Template Sync
+- List View: Shows cached templates available for the "Session Expired" state.
+- Action: "Refresh from Meta" button (Calls n8n -> Meta API to fetch latest approved templates).
+#### Data Binding Guide (For AI Generation)
+- Chat History: Bind UI to messages table.
+	- body -> Message Text.
+	- source → Context Chip Label.
+	- status -> Checkmark Icon.
+- Activity Feed: Bind UI to automation_logs table.
+- Session Logic:
+	- isSessionOpen = (Now - contacts.last_inbound_at) < 24 hours.
+	- If !isSessionOpen: Disable Text Input.
+#### 6. Development Phases
+Phase 1: The Skeleton (Data & Connectivity)
+- Set up Supabase Tables.
+- Set up Meta App & Get Permanent Token.
+- Build n8n workflow to receive "Hello World" from phone and save to DB.
+Phase 2: The View (Frontend)
+- Vibe code the Next.js interface.
+- Connect Supabase Realtime (Read-only mode first).
+- Milestone: You send a msg from your phone, and it pops up on the screen instantly.
+Phase 3: The Mouth (Sending)
+- Implement the POST request to Meta.
+- Handle the UI updates for outbound messages.
+- Implement the "Admin Alert" notification logic in n8n.
+Phase 4: Compliance & Polish
+- Add the logic to detect >24h timestamp.
+- Implement the "Template Message" sender.
+- Media handling (Images).
+#### 7. Key Constraints / Risks
+- The 24-Hour Rule: This is the biggest friction point. The UI must clearly show when you cannot type freely.
+- Media Hosting: Do not rely on Meta's URLs. If n8n fails to download/upload the image, the UI will show a broken link. Error handling in n8n is crucial here.
