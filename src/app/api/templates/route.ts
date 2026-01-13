@@ -100,15 +100,18 @@ function isCacheValid(): boolean {
 async function fetchTemplatesFromMeta(): Promise<
   { success: true; data: TemplateListItem[] } | { success: false; error: MetaErrorResponse }
 > {
-  const phoneNumberId = process.env.META_PHONE_NUMBER_ID;
   const accessToken = process.env.META_ACCESS_TOKEN;
+  const wabaId = process.env.META_WABA_ID;
 
-  if (!phoneNumberId || !accessToken) {
-    throw new Error("META_PHONE_NUMBER_ID or META_ACCESS_TOKEN environment variable not configured");
+  if (!accessToken) {
+    throw new Error("META_ACCESS_TOKEN environment variable not configured");
   }
 
-  // Use the WABA ID for templates endpoint
-  const wabaId = process.env.META_WABA_ID || phoneNumberId;
+  if (!wabaId) {
+    throw new Error("META_WABA_ID environment variable is required for fetching templates. Templates must be fetched from the WhatsApp Business Account ID, not the Phone Number ID. Please add META_WABA_ID to your .env.local file.");
+  }
+
+  // Templates endpoint requires WABA ID, not Phone Number ID
   const url = `${META_API_BASE_URL}/${wabaId}/message_templates?fields=id,name,language,status,category,components`;
 
   const response = await fetch(url, {
@@ -184,10 +187,14 @@ export async function GET(request: NextRequest) {
     const result = await fetchTemplatesFromMeta();
 
     if (!result.success) {
+      const metaError = result.error.error;
+      const errorMessage = metaError?.message || "Failed to fetch templates from Meta API";
+      
       return NextResponse.json(
         {
           error: "Failed to fetch templates",
-          meta_error: result.error.error,
+          message: errorMessage,
+          meta_error: metaError,
         },
         { status: 502 }
       );
@@ -222,7 +229,10 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: "Internal server error" },
+      { 
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : "An unexpected error occurred"
+      },
       { status: 500 }
     );
   }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MessageSquare, Activity, Settings, LogOut } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { signOut } from "@/lib/auth";
+import { signOut } from "@/lib/auth.client";
 import { useRouter } from "next/navigation";
 
 interface NavItem {

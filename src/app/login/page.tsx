@@ -8,7 +8,7 @@ import { Loader2, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { signIn } from "@/lib/auth";
+import { signIn } from "@/lib/auth.client";
 
 export default function LoginPage() {
   const router = useRouter();

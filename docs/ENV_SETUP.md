@@ -55,10 +55,10 @@ META_ACCESS_TOKEN=EAAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # This is the ID of your WhatsApp Business phone number
 META_PHONE_NUMBER_ID=123456789012345
 
-# WhatsApp Business Account ID (Optional)
+# WhatsApp Business Account ID (Required for templates)
 # Found in: Meta Business Suite → Settings → WhatsApp Accounts
-# Used for: Fetching message templates
-# If not set, falls back to META_PHONE_NUMBER_ID
+# Used for: Fetching message templates (required - cannot use Phone Number ID)
+# Note: Templates endpoint requires WABA ID, not Phone Number ID
 META_WABA_ID=987654321098765
 ```
 
@@ -91,7 +91,7 @@ META_WABA_ID=987654321098765
 |----------|----------|-------------|
 | `META_ACCESS_TOKEN` | ✅ Yes | Graph API access token for WhatsApp |
 | `META_PHONE_NUMBER_ID` | ✅ Yes | Your WhatsApp Business phone number ID |
-| `META_WABA_ID` | Optional | WhatsApp Business Account ID (for templates) |
+| `META_WABA_ID` | ✅ Yes (for templates) | WhatsApp Business Account ID (required for fetching templates) |
 
 #### Where to Find Meta API Keys
 

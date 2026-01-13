@@ -125,7 +125,32 @@ export function TemplateManager() {
       const data: TemplatesResponse = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch templates");
+        // Handle different error types
+        let errorMessage = data.error || "Failed to fetch templates";
+        
+        // Check for specific error types
+        if (response.status === 401) {
+          errorMessage = "Please sign in to view templates";
+        } else if (response.status === 500 && data.message) {
+          // Environment variable error
+          if (data.message.includes("META_WABA_ID")) {
+            errorMessage = "META_WABA_ID is required. Templates must be fetched from the WhatsApp Business Account ID, not the Phone Number ID. Please add META_WABA_ID to your .env.local file.";
+          } else if (data.message.includes("environment variable")) {
+            errorMessage = "Meta API credentials not configured. Please add META_ACCESS_TOKEN and META_WABA_ID to .env.local";
+          } else {
+            errorMessage = data.message;
+          }
+        } else if (response.status === 502) {
+          // Meta API error
+          const metaError = (data as any).meta_error;
+          if (metaError?.message) {
+            errorMessage = `Meta API Error: ${metaError.message}`;
+          } else {
+            errorMessage = "Failed to connect to Meta API. Check your credentials.";
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
 
       setTemplates(data.templates || []);
@@ -140,8 +165,13 @@ export function TemplateManager() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load templates";
       setError(message);
+      console.error("Template fetch error:", err);
+      
       if (forceRefresh) {
         toast.error("Refresh failed", { description: message });
+      } else {
+        // Show toast on initial load failure too
+        toast.error("Failed to load templates", { description: message });
       }
     } finally {
       setIsLoading(false);
