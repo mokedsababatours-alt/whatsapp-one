@@ -1,0 +1,54 @@
+# =============================================================================
+# Headless WhatsApp Interface - Docker Compose Configuration
+# =============================================================================
+# Usage:
+#   Development: docker-compose up --build
+#   Production:  docker-compose -f docker-compose.yml up -d
+# =============================================================================
+
+services:
+  whatsapp-interface:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whatsapp-interface
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Node environment
+      - NODE_ENV=production
+      
+      # Supabase Configuration
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      
+      # Meta WhatsApp API Configuration
+      - META_ACCESS_TOKEN=${META_ACCESS_TOKEN}
+      - META_PHONE_NUMBER_ID=${META_PHONE_NUMBER_ID}
+      - META_WABA_ID=${META_WABA_ID}
+    env_file:
+      - .env.local
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Resource limits (adjust based on your server)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+# =============================================================================
+# Networks (optional - uncomment if using reverse proxy)
+# =============================================================================
+# networks:
+#   default:
+#     external:
+#       name: nginx-proxy
