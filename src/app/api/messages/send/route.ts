@@ -42,7 +42,7 @@ interface MetaErrorResponse {
 // Constants
 // =============================================================================
 
-const META_API_VERSION = "v18.0";
+const META_API_VERSION = "v24.0";
 const META_API_BASE_URL = `https://graph.facebook.com/${META_API_VERSION}`;
 const SESSION_WINDOW_HOURS = 24;
 
