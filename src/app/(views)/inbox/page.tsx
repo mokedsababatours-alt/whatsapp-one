@@ -99,6 +99,18 @@ export default function InboxPage() {
     setSelectedContact(contact);
   }, []);
 
+  const handleStartNewChat = useCallback(async (phoneNumber: string) => {
+    setSelectedContact({
+      phone_number: phoneNumber,
+      profile_name: null,
+      last_interaction_at: null,
+      session_status: "expired",
+      unread_count: 0,
+      created_at: new Date().toISOString(),
+    });
+    return true;
+  }, []);
+
   // Handle sending a text message with optimistic update
   const handleSendMessage = useCallback(
     async (text: string) => {
@@ -323,6 +335,7 @@ export default function InboxPage() {
         contacts={contacts}
         selectedContact={selectedContact}
         onSelectContact={handleSelectContact}
+        onStartNewChat={handleStartNewChat}
       />
 
       {/* Right Panel - Conversation View */}

@@ -217,15 +217,15 @@ export function ActivityFeed() {
   const { logs, isLoading, error, connectionStatus, filter, setFilter } = useAutomationLogs();
 
   return (
-    <div className="flex h-full w-[350px] flex-shrink-0 flex-col border-r border-slate-200 bg-slate-50">
+    <div className="flex h-full w-full flex-col bg-white">
       {/* Header */}
-      <div className="flex h-14 items-center justify-between border-b border-slate-200 px-4">
-        <h1 className="text-lg font-semibold text-slate-900">Activity</h1>
+      <div className="flex h-14 items-center justify-between border-b border-slate-200 px-6 bg-white">
+        <h1 className="text-lg font-semibold text-slate-900">Activity Log</h1>
         <ConnectionIndicator status={connectionStatus} />
       </div>
 
       {/* Filter Dropdown */}
-      <div className="flex items-center gap-2 p-3 border-b border-slate-200">
+      <div className="flex items-center gap-2 p-3 border-b border-slate-200 bg-white">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs">
@@ -259,41 +259,43 @@ export function ActivityFeed() {
       ) : logs.length === 0 ? (
         <EmptyState />
       ) : (
-        <ScrollArea className="flex-1">
-          <Table>
-            <TableHeader className="sticky top-0 bg-slate-50">
-              <TableRow className="hover:bg-slate-50">
-                <TableHead className="w-[60px] text-[10px] text-slate-500 font-medium">Time</TableHead>
-                <TableHead className="text-[10px] text-slate-500 font-medium">Workflow</TableHead>
-                <TableHead className="w-[80px] text-[10px] text-slate-500 font-medium">Target</TableHead>
-                <TableHead className="w-[60px] text-[10px] text-slate-500 font-medium">Status</TableHead>
-                <TableHead className="w-[40px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {logs.map((log) => (
-                <TableRow key={log.id} className="hover:bg-slate-100/50">
-                  <TableCell className="py-2 text-[11px] text-slate-600 tabular-nums">
-                    {formatTime(log.executed_at)}
-                  </TableCell>
-                  <TableCell className="py-2">
-                    <span className="text-[11px] font-medium text-slate-800 truncate block max-w-[100px]">
-                      {log.workflow_name}
-                    </span>
-                  </TableCell>
-                  <TableCell className="py-2 text-[11px] text-slate-500 font-mono">
-                    {maskPhone(log.contact_phone)}
-                  </TableCell>
-                  <TableCell className="py-2">
-                    <StatusBadge status={log.status} />
-                  </TableCell>
-                  <TableCell className="py-2">
-                    <LogRowDetails log={log} />
-                  </TableCell>
+        <ScrollArea className="flex-1 bg-white">
+          <div className="px-6">
+            <Table>
+              <TableHeader className="sticky top-0 bg-white z-10">
+                <TableRow className="hover:bg-slate-50">
+                  <TableHead className="w-[80px] text-xs text-slate-500 font-medium">Time</TableHead>
+                  <TableHead className="text-xs text-slate-500 font-medium">Workflow</TableHead>
+                  <TableHead className="w-[200px] text-xs text-slate-500 font-medium">Target</TableHead>
+                  <TableHead className="w-[100px] text-xs text-slate-500 font-medium">Status</TableHead>
+                  <TableHead className="w-[50px] text-xs text-slate-500 font-medium"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {logs.map((log) => (
+                  <TableRow key={log.id} className="hover:bg-slate-50">
+                    <TableCell className="py-3 text-xs text-slate-600 tabular-nums">
+                      {formatTime(log.executed_at)}
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <span className="text-xs font-medium text-slate-800">
+                        {log.workflow_name}
+                      </span>
+                    </TableCell>
+                    <TableCell className="py-3 text-xs text-slate-500 font-mono">
+                      {log.contact_phone || "—"}
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <StatusBadge status={log.status} />
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <LogRowDetails log={log} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </ScrollArea>
       )}
     </div>

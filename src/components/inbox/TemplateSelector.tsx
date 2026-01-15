@@ -168,7 +168,22 @@ export function TemplateSelector({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || data.error || "Failed to send template");
+        const metaErrorCode = data?.meta_error?.code;
+        const metaErrorDetails = data?.meta_error?.error_data?.details;
+        const errorMessage =
+          metaErrorCode === 131030
+            ? "Recipient not in allowed list (test number)"
+            : data.message ||
+              data.error ||
+              data.meta_error?.message ||
+              "Failed to send template";
+        const errorDetails =
+          metaErrorCode === 131030
+            ? "Add the recipient to the allowed list in Meta (test mode)."
+            : metaErrorDetails;
+        const error = new Error(errorMessage);
+        (error as Error & { details?: string }).details = errorDetails;
+        throw error;
       }
 
       const result = data as SendTemplateResponse;
@@ -202,8 +217,12 @@ export function TemplateSelector({
       onOpenChange(false);
     } catch (err) {
       console.error("Send template error:", err);
+      const errorDetails =
+        err instanceof Error && "details" in err
+          ? (err as Error & { details?: string }).details
+          : undefined;
       toast.error("Failed to send template", {
-        description: err instanceof Error ? err.message : "Please try again",
+        description: errorDetails || (err instanceof Error ? err.message : "Please try again"),
       });
     } finally {
       setIsSending(false);

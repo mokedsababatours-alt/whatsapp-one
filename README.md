@@ -78,7 +78,7 @@ A custom, web-based chat interface that acts as a **remote control** for a headl
 
 | Layer | Technology |
 |-------|------------|
-| **Frontend** | Next.js 16 (App Router), React 19, TypeScript |
+| **Frontend** | NodeJS v24.12.0 (App Router), React 19, TypeScript |
 | **Styling** | TailwindCSS v4, Shadcn/UI, Lucide React Icons |
 | **Backend** | Next.js API Routes, Supabase Edge Functions |
 | **Database** | Supabase (PostgreSQL) with Row Level Security |

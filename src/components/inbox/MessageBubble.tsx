@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Check, CheckCheck } from "lucide-react";
+import { Check, CheckCheck, FileText } from "lucide-react";
 import { MediaMessage } from "./MediaMessage";
 import type { MessageBubbleProps } from "@/types";
 
@@ -71,6 +71,7 @@ export function MessageBubble({
   const isOutbound = message.direction === "outbound";
   const isAutomation = message.source !== "manual_ui";
   const isImageMessage = message.type === "image" && message.media_url;
+  const isTemplateMessage = message.type === "template";
 
   return (
     <div
@@ -107,6 +108,12 @@ export function MessageBubble({
           />
         ) : (
           <>
+            {isTemplateMessage && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded-full mb-1">
+                <FileText className="h-3 w-3" />
+                Template
+              </span>
+            )}
             {/* Text message body */}
             {message.body && (
               <p className="text-sm whitespace-pre-wrap">{message.body}</p>

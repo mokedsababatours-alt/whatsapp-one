@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { isSessionActive } from "@/lib/session";
-import type { MessageInsert } from "@/types/database";
+import type { MessageInsert, AutomationLogInsert } from "@/types/database";
 
 // =============================================================================
 // Types
@@ -39,6 +39,7 @@ interface MetaErrorResponse {
 
 const META_API_VERSION = "v24.0";
 const META_API_BASE_URL = `https://graph.facebook.com/${META_API_VERSION}`;
+const WORKFLOW_NAME = "ui_send_image";
 
 // =============================================================================
 // Helper Functions
@@ -166,14 +167,52 @@ async function sendImageMessage(
   return { success: true, data: data as MetaSuccessResponse };
 }
 
+/**
+ * Log action to automation_logs table
+ * Wrapped in try-catch to ensure logging failures don't affect the main response
+ */
+async function logToAutomationLogs(
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
+  contactPhone: string,
+  status: "success" | "failed",
+  errorDetail?: string
+): Promise<void> {
+  try {
+    const logEntry: AutomationLogInsert = {
+      workflow_name: WORKFLOW_NAME,
+      contact_phone: contactPhone,
+      status: status,
+      error_detail: errorDetail || null,
+      cost_estimate: null,
+    };
+
+    const { error: logError } = await supabase
+      .from("automation_logs")
+      .insert(logEntry);
+
+    if (logError) {
+      // Log to console but don't throw - logging failures shouldn't break the API
+      console.error("Failed to insert automation log:", logError);
+    }
+  } catch (error) {
+    // Catch any unexpected errors to prevent logging from breaking the response
+    console.error("Automation logging error:", error);
+  }
+}
+
 // =============================================================================
 // POST Handler
 // =============================================================================
 
 export async function POST(request: NextRequest) {
+  // Initialize supabase client early so it's available for logging
+  let supabase: Awaited<ReturnType<typeof getSupabaseServerClient>> | null = null;
+  let contactPhone: string | null = null;
+
   try {
     // 1. Parse and validate request body
     const requestBody: SendImageRequest = await request.json();
+    contactPhone = requestBody.recipient;
 
     if (!requestBody.recipient || !requestBody.mediaUrl) {
       return NextResponse.json(
@@ -191,7 +230,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Get Supabase client and verify user session
-    const supabase = await getSupabaseServerClient();
+    supabase = await getSupabaseServerClient();
 
     const {
       data: { user },
@@ -237,6 +276,13 @@ export async function POST(request: NextRequest) {
     const uploadResult = await uploadToMetaMedia(requestBody.mediaUrl);
 
     if (!uploadResult.success) {
+      await logToAutomationLogs(
+        supabase,
+        requestBody.recipient,
+        "failed",
+        `Upload failed: ${uploadResult.error}`
+      );
+
       return NextResponse.json(
         {
           error: "Failed to upload media",
@@ -254,6 +300,16 @@ export async function POST(request: NextRequest) {
     );
 
     if (!sendResult.success) {
+      const errorMessage = sendResult.error.error?.message || "Meta API error";
+      const errorCode = sendResult.error.error?.code;
+
+      await logToAutomationLogs(
+        supabase,
+        requestBody.recipient,
+        "failed",
+        `Meta API error: ${errorMessage} (code: ${errorCode})`
+      );
+
       // Check for session window error from Meta (error code 131047)
       const isSessionError = sendResult.error.error?.code === 131047;
 
@@ -282,6 +338,9 @@ export async function POST(request: NextRequest) {
         { status: 502 }
       );
     }
+
+    // Log successful send to automation_logs (after upload and send)
+    await logToAutomationLogs(supabase, requestBody.recipient, "success");
 
     // 7. Extract Meta message ID from response
     const metaMessageId = sendResult.data.messages[0]?.id;
@@ -329,6 +388,12 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Send image error:", error);
+
+    // Attempt to log the error if we have supabase client and contact phone
+    if (supabase && contactPhone) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      await logToAutomationLogs(supabase, contactPhone, "failed", `Exception: ${errorMessage}`);
+    }
 
     // Handle environment variable errors specifically
     if (

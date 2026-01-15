@@ -244,6 +244,29 @@ export function MessageInput({
           </TooltipContent>
         </Tooltip>
 
+        {/* Template button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={handleTemplateClick}
+              disabled={isProcessing || !onSendTemplate}
+              className={cn(
+                "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                onSendTemplate && !isProcessing
+                  ? "bg-white border border-slate-200 text-slate-500 hover:bg-slate-50"
+                  : "bg-slate-50 border border-slate-200 text-slate-300 cursor-not-allowed opacity-60"
+              )}
+              aria-label="Send template"
+            >
+              <FileText className="h-5 w-5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p>{onSendTemplate ? "Send template" : "Templates unavailable"}</p>
+          </TooltipContent>
+        </Tooltip>
+
         {/* Message textarea */}
         <div className="flex-1 relative">
           <Textarea

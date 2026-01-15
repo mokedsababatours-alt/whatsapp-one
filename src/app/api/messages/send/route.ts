@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import type { MessageInsert } from "@/types/database";
+import type { MessageInsert, AutomationLogInsert } from "@/types/database";
 
 // =============================================================================
 // Types
@@ -45,6 +45,7 @@ interface MetaErrorResponse {
 const META_API_VERSION = "v24.0";
 const META_API_BASE_URL = `https://graph.facebook.com/${META_API_VERSION}`;
 const SESSION_WINDOW_HOURS = 24;
+const WORKFLOW_NAME = "ui_send_message";
 
 // =============================================================================
 // Helper Functions
@@ -114,14 +115,52 @@ async function sendToMetaAPI(
   return { success: true, data: data as MetaSuccessResponse };
 }
 
+/**
+ * Log action to automation_logs table
+ * Wrapped in try-catch to ensure logging failures don't affect the main response
+ */
+async function logToAutomationLogs(
+  supabase: Awaited<ReturnType<typeof getSupabaseServerClient>>,
+  contactPhone: string,
+  status: "success" | "failed",
+  errorDetail?: string
+): Promise<void> {
+  try {
+    const logEntry: AutomationLogInsert = {
+      workflow_name: WORKFLOW_NAME,
+      contact_phone: contactPhone,
+      status: status,
+      error_detail: errorDetail || null,
+      cost_estimate: null,
+    };
+
+    const { error: logError } = await supabase
+      .from("automation_logs")
+      .insert(logEntry);
+
+    if (logError) {
+      // Log to console but don't throw - logging failures shouldn't break the API
+      console.error("Failed to insert automation log:", logError);
+    }
+  } catch (error) {
+    // Catch any unexpected errors to prevent logging from breaking the response
+    console.error("Automation logging error:", error);
+  }
+}
+
 // =============================================================================
 // POST Handler
 // =============================================================================
 
 export async function POST(request: NextRequest) {
+  // Initialize supabase client early so it's available for logging
+  let supabase: Awaited<ReturnType<typeof getSupabaseServerClient>> | null = null;
+  let contactPhone: string | null = null;
+
   try {
     // 1. Parse and validate request body
     const requestBody: SendMessageRequest = await request.json();
+    contactPhone = requestBody.recipient;
 
     if (!requestBody.recipient || !requestBody.body) {
       return NextResponse.json(
@@ -139,7 +178,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Get Supabase client and verify user session
-    const supabase = await getSupabaseServerClient();
+    supabase = await getSupabaseServerClient();
 
     const {
       data: { user },
@@ -172,6 +211,9 @@ export async function POST(request: NextRequest) {
 
     // 4. Validate 24-hour session window
     if (!isSessionWindowActive(contact.last_interaction_at)) {
+      // Log the failed attempt (session expired before API call)
+      await logToAutomationLogs(supabase, contactPhone, "failed", "Session window expired");
+
       return NextResponse.json(
         {
           error: "Session window expired",
@@ -190,6 +232,15 @@ export async function POST(request: NextRequest) {
     if (!metaResult.success) {
       // Check for session window error from Meta (error code 131047)
       const isSessionError = metaResult.error.error?.code === 131047;
+      const errorMessage = metaResult.error.error?.message || "Meta API error";
+
+      // Log the failed attempt
+      await logToAutomationLogs(
+        supabase,
+        contactPhone,
+        "failed",
+        `Meta API error: ${errorMessage} (code: ${metaResult.error.error?.code})`
+      );
 
       if (isSessionError) {
         // Update contact session_status to expired
@@ -217,10 +268,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. Extract Meta message ID from response
+    // 6. Log successful send to automation_logs
+    await logToAutomationLogs(supabase, contactPhone, "success");
+
+    // 7. Extract Meta message ID from response
     const metaMessageId = metaResult.data.messages[0]?.id;
 
-    // 7. Insert message record into database
+    // 8. Insert message record into database
     const messageInsert: MessageInsert = {
       contact_phone: requestBody.recipient,
       direction: "outbound",
@@ -253,7 +307,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 8. Return success response
+    // 9. Return success response
     return NextResponse.json(
       {
         success: true,
@@ -264,6 +318,12 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Send message error:", error);
+
+    // Attempt to log the error if we have supabase client and contact phone
+    if (supabase && contactPhone) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      await logToAutomationLogs(supabase, contactPhone, "failed", `Exception: ${errorMessage}`);
+    }
 
     // Handle environment variable errors specifically
     if (error instanceof Error && error.message.includes("environment variable")) {
