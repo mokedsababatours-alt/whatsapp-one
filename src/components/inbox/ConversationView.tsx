@@ -47,7 +47,6 @@ export function ConversationView({
   const handleSendMessage = useCallback(
     async (text: string) => {
       if (!onSendMessage) {
-        console.log("Message to send:", text);
         return;
       }
 
@@ -65,7 +64,6 @@ export function ConversationView({
   const handleSendImage = useCallback(
     async (file: File, caption?: string) => {
       if (!onSendImage) {
-        console.log("Image to send:", file.name, caption);
         return;
       }
 
@@ -83,8 +81,6 @@ export function ConversationView({
   const handleSendTemplate = useCallback(() => {
     if (onSendTemplate) {
       onSendTemplate();
-    } else {
-      console.log("Template selection requested");
     }
   }, [onSendTemplate]);
 

@@ -181,7 +181,7 @@ export async function getTemplateByNameAndLanguage(
   }
 
   // Search in freshly fetched data
-  return result.data.find(
+  return result.data?.find(
     (t) => t.name === templateName && t.language === languageCode
   ) || null;
 }

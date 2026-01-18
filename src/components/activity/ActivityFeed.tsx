@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Activity, ChevronDown, Wifi, WifiOff, AlertCircle, Loader2, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { useAutomationLogs, type LogFilter } from "@/hooks/useAutomationLogs";
 import type { AutomationLog } from "@/types";
 
@@ -58,6 +66,15 @@ function maskPhone(phone: string | null): string {
   const lastDigits = cleaned.slice(-3);
   
   return `${countryCode}...${lastDigits}`;
+}
+
+/**
+ * Truncate error message to first 50 characters + "..."
+ */
+function truncateError(errorDetail: string | null): string {
+  if (!errorDetail) return "—";
+  if (errorDetail.length <= 50) return errorDetail;
+  return `${errorDetail.substring(0, 50)}...`;
 }
 
 /**
@@ -136,27 +153,61 @@ function StatusBadge({ status }: { status: "success" | "failed" }) {
   );
 }
 
-function LogRowDetails({ log }: { log: AutomationLog }) {
-  const hasDetails = log.error_detail || log.cost_estimate !== null;
+function ErrorDetailCell({ errorDetail }: { errorDetail: string | null }) {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   
-  if (!hasDetails) {
+  if (!errorDetail) {
+    return <span className="text-slate-400 text-xs">—</span>;
+  }
+  
+  const truncated = truncateError(errorDetail);
+  const needsTruncation = errorDetail.length > 50;
+  
+  return (
+    <>
+      <button
+        onClick={() => needsTruncation && setIsDialogOpen(true)}
+        className={`text-xs text-red-600 text-left ${
+          needsTruncation ? "cursor-pointer hover:underline" : "cursor-default"
+        }`}
+        title={needsTruncation ? "Click to view full error" : undefined}
+      >
+        {truncated}
+      </button>
+      
+      {needsTruncation && (
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Error Details</DialogTitle>
+              <DialogDescription>
+                Full error message from automation workflow
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mt-4 rounded-md bg-red-50 border border-red-200 p-4">
+              <p className="text-sm text-red-800 whitespace-pre-wrap break-words">
+                {errorDetail}
+              </p>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
+  );
+}
+
+function LogRowDetails({ log }: { log: AutomationLog }) {
+  // Only show cost estimate info (error_detail now has its own column)
+  if (log.cost_estimate === null) {
     return <span className="text-slate-400">—</span>;
   }
   
   const tooltipContent = (
     <div className="space-y-1 max-w-xs">
-      {log.error_detail && (
-        <div>
-          <span className="font-medium text-red-400">Error: </span>
-          <span>{log.error_detail}</span>
-        </div>
-      )}
-      {log.cost_estimate !== null && (
-        <div>
-          <span className="font-medium">Cost: </span>
-          <span>₪ {log.cost_estimate.toFixed(4)}</span>
-        </div>
-      )}
+      <div>
+        <span className="font-medium">Cost: </span>
+        <span>₪ {log.cost_estimate.toFixed(4)}</span>
+      </div>
     </div>
   );
   
@@ -268,12 +319,18 @@ export function ActivityFeed() {
                   <TableHead className="text-xs text-slate-500 font-medium">Workflow</TableHead>
                   <TableHead className="w-[200px] text-xs text-slate-500 font-medium">Target</TableHead>
                   <TableHead className="w-[100px] text-xs text-slate-500 font-medium">Status</TableHead>
+                  <TableHead className="w-[250px] text-xs text-slate-500 font-medium">Error Details</TableHead>
                   <TableHead className="w-[50px] text-xs text-slate-500 font-medium"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {logs.map((log) => (
-                  <TableRow key={log.id} className="hover:bg-slate-50">
+                  <TableRow 
+                    key={log.id} 
+                    className={`hover:bg-slate-50 ${
+                      log.status === "failed" ? "border-l-4 border-l-red-500 bg-red-50/30" : ""
+                    }`}
+                  >
                     <TableCell className="py-3 text-xs text-slate-600 tabular-nums">
                       {formatTime(log.executed_at)}
                     </TableCell>
@@ -287,6 +344,13 @@ export function ActivityFeed() {
                     </TableCell>
                     <TableCell className="py-3">
                       <StatusBadge status={log.status} />
+                    </TableCell>
+                    <TableCell className="py-3">
+                      {log.status === "failed" ? (
+                        <ErrorDetailCell errorDetail={log.error_detail} />
+                      ) : (
+                        <span className="text-slate-400 text-xs">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="py-3">
                       <LogRowDetails log={log} />

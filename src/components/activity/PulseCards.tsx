@@ -127,7 +127,7 @@ function usePulseStats() {
 
     try {
       // Query 1: Total messages in last 24 hours
-      const { count: total24h, error: error24h } = await supabase
+      const { count: total24h, error: error24h } = await (supabase as any)
         .from("automation_logs")
         .select("*", { count: "exact", head: true })
         .gte("executed_at", twentyFourHoursAgo);
@@ -135,7 +135,7 @@ function usePulseStats() {
       if (error24h) throw error24h;
 
       // Query 2: Total messages in previous 24 hours (24-48 hours ago)
-      const { count: previous24h, error: errorPrev } = await supabase
+      const { count: previous24h, error: errorPrev } = await (supabase as any)
         .from("automation_logs")
         .select("*", { count: "exact", head: true })
         .gte("executed_at", fortyEightHoursAgo)
@@ -144,7 +144,7 @@ function usePulseStats() {
       if (errorPrev) throw errorPrev;
 
       // Query 3: Failed count in last 24 hours for error rate
-      const { count: failed24h, error: errorFailed } = await supabase
+      const { count: failed24h, error: errorFailed } = await (supabase as any)
         .from("automation_logs")
         .select("*", { count: "exact", head: true })
         .gte("executed_at", twentyFourHoursAgo)
@@ -153,7 +153,7 @@ function usePulseStats() {
       if (errorFailed) throw errorFailed;
 
       // Query 4: Sum of cost_estimate for current month
-      const { data: costData, error: errorCost } = await supabase
+      const { data: costData, error: errorCost } = await (supabase as any)
         .from("automation_logs")
         .select("cost_estimate")
         .gte("executed_at", startOfMonth)
@@ -167,7 +167,7 @@ function usePulseStats() {
       const errorRate = totalCount > 0 ? (failedCount / totalCount) * 100 : 0;
 
       // Calculate total cost
-      const totalCost = costData?.reduce((sum, row) => sum + (row.cost_estimate ?? 0), 0) ?? null;
+      const totalCost = (costData as Array<{ cost_estimate: number | null }> | null)?.reduce((sum, row) => sum + (row.cost_estimate ?? 0), 0) ?? null;
 
       setStats({
         totalMessages24h: total24h ?? 0,

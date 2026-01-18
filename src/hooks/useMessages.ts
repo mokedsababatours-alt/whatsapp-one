@@ -53,7 +53,7 @@ export function useMessages(contactPhone: string | null): UseMessagesReturn {
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase
+      const { data, error: fetchError } = await (supabase as any)
         .from("messages")
         .select("*")
         .eq("contact_phone", contactPhone)

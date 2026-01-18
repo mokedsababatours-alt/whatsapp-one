@@ -97,12 +97,12 @@ export async function POST(request: NextRequest) {
     const metaResult = await lookupContact(requestBody.phone);
     if (!metaResult.success) {
       return NextResponse.json(
-        { error: "Failed to verify number", meta_error: metaResult.error.error },
+        { error: "Failed to verify number", meta_error: metaResult.error?.error },
         { status: 502 }
       );
     }
 
-    const metaContact = metaResult.data.contacts?.[0];
+    const metaContact = metaResult.data?.contacts?.[0];
     const valid = metaContact?.status === "valid";
 
     return NextResponse.json(

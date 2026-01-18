@@ -76,7 +76,7 @@ A custom, web-based chat interface that acts as a **remote control** for a headl
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
+| Layer | Technology |  
 |-------|------------|
 | **Frontend** | NodeJS v24.12.0 (App Router), React 19, TypeScript |
 | **Styling** | TailwindCSS v4, Shadcn/UI, Lucide React Icons |
@@ -119,14 +119,14 @@ npm install
 ### 2. Configure Environment Variables
 
 ```bash
-# Create environment file
-touch .env.local
+# Create environment file from template
+cp .env.example .env.local
 
 # Edit with your credentials
-# See docs/ENV_SETUP.md for detailed configuration guide
+nano .env.local
 ```
 
-> 📄 See [`docs/ENV_SETUP.md`](./docs/ENV_SETUP.md) for complete environment variable reference and setup instructions.
+> 📄 See [Environment Variables](#-environment-variables) section below for complete reference.
 
 ### 3. Supabase Project Setup
 
@@ -153,16 +153,22 @@ touch .env.local
    - `whatsapp_business_management`
 5. Note your **Phone Number ID** and **WABA ID**
 
-> 📄 See [`.apm/Memory/Phase_01_Foundation_Data_Layer/Task_1_6_User_Meta_Token_Acquisition.md`](./.apm/Memory/Phase_01_Foundation_Data_Layer/Task_1_6_User_Meta_Token_Acquisition.md) for detailed token acquisition steps.
+**Where to Find Meta Credentials:**
+
+- **Access Token:** Meta Business Suite → Settings → Users → System Users → Generate Token (permissions: `whatsapp_business_messaging`, `whatsapp_business_management`)
+- **Phone Number ID:** Meta App Dashboard → WhatsApp → Getting Started → Phone Number ID
+- **WABA ID:** Meta Business Suite → Settings → WhatsApp Accounts → WhatsApp Business Account ID
+
+> ⚠️ **Note:** Meta Access Tokens expire after 60 days. Regenerate before expiry.
 
 ### 5. n8n Webhook Setup
 
-1. Import the inbound webhook workflow from the specification
-2. Configure the webhook URL in Meta App Dashboard
-3. Set the verify token for webhook verification
+1. Create n8n webhook workflow to receive Meta webhooks (GET for verification, POST for events)
+2. Configure the webhook URL in Meta App Dashboard → WhatsApp → Configuration → Webhooks
+3. Set the verify token for webhook verification (must match n8n workflow)
 4. Test with a message from your phone
 
-> 📄 See [`docs/N8N_INBOUND_SPEC.md`](./docs/N8N_INBOUND_SPEC.md) for complete n8n workflow specification.
+> 📄 For detailed n8n workflow specifications, refer to the official [n8n documentation](https://docs.n8n.io/).
 
 ### 6. Create Test User
 
@@ -199,14 +205,9 @@ whatsapp-interface/
 │   │   └── auth.ts            # Auth utilities
 │   └── types/                 # TypeScript definitions
 │       └── database.ts        # Supabase schema types
-├── docs/                      # Documentation
-│   ├── META_API_REFERENCE.md  # WhatsApp Cloud API reference
-│   ├── N8N_INBOUND_SPEC.md    # Inbound pipeline specification
-│   └── N8N_NOTIFICATION_SPEC.md # Admin notification spec
 ├── supabase/
 │   └── schema.sql             # Database schema
-└── docs/
-    └── ENV_SETUP.md           # Environment variables guide
+└── .env.example               # Environment variables template
 ```
 
 ---
@@ -223,16 +224,48 @@ whatsapp-interface/
 
 ## 🔧 Environment Variables
 
+### Required Variables
+
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `NEXT_PUBLIC_SUPABASE_URL` | ✅ | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | Supabase anonymous (public) key |
-| `SUPABASE_SERVICE_ROLE_KEY` | ⚠️ | Service role key (for n8n, not frontend) |
 | `META_ACCESS_TOKEN` | ✅ | Meta Graph API access token |
 | `META_PHONE_NUMBER_ID` | ✅ | WhatsApp phone number ID |
-| `META_WABA_ID` | Optional | WhatsApp Business Account ID |
+| `META_WABA_ID` | ✅ | WhatsApp Business Account ID (required for templates) |
 
-> ⚠️ Never expose `SUPABASE_SERVICE_ROLE_KEY` to the frontend!
+### Optional Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SUPABASE_SERVICE_ROLE_KEY` | ⚠️ | Service role key (for n8n only, not frontend) |
+
+### Where to Find Credentials
+
+#### Supabase Configuration
+
+1. Go to [supabase.com](https://supabase.com/) and open your project
+2. Navigate to **Settings** → **API**
+3. Copy values from **Project API Keys** section:
+   - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
+   - **anon public** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - **service_role secret** → `SUPABASE_SERVICE_ROLE_KEY` (for n8n only)
+
+#### Meta WhatsApp API Configuration
+
+1. **Access Token:** Meta Business Suite → Settings → Users → System Users → Generate Token
+   - Required permissions: `whatsapp_business_messaging`, `whatsapp_business_management`
+   - ⚠️ **Expires after 60 days** - regenerate before expiry
+
+2. **Phone Number ID:** Meta App Dashboard → WhatsApp → Getting Started → Phone Number ID
+
+3. **WABA ID:** Meta Business Suite → Settings → WhatsApp Accounts → WhatsApp Business Account ID
+
+### Security Notes
+
+- ✅ **Safe to expose** (used in browser): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- ❌ **Never expose** (server-side only): `SUPABASE_SERVICE_ROLE_KEY`, `META_ACCESS_TOKEN`
+- The service role key bypasses RLS policies and should only be used in n8n workflows, never in frontend code
 
 ---
 
@@ -317,14 +350,81 @@ whatsapp-interface/
 
 ---
 
-## 📚 Documentation Links
+## 🚀 Production Deployment
 
-### Internal Docs
-- [Meta API Reference](./docs/META_API_REFERENCE.md) — Endpoints, payloads, webhooks
-- [n8n Inbound Pipeline](./docs/N8N_INBOUND_SPEC.md) — Webhook processing workflow
-- [n8n Notification Spec](./docs/N8N_NOTIFICATION_SPEC.md) — Admin alert workflow
+### Quick Start
 
-### External Resources
+#### Docker Deployment
+
+```bash
+# Build and start
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# Stop
+docker compose down
+```
+
+#### PM2 Deployment
+
+```bash
+# Install dependencies and build
+npm ci
+npm run build
+
+# Start with PM2
+pm2 start ecosystem.config.js --env production
+
+# View logs
+pm2 logs whatsapp-interface
+
+# Stop
+pm2 stop whatsapp-interface
+```
+
+### Server Requirements
+
+| Resource | Minimum | Recommended |
+|----------|---------|-------------|
+| **CPU** | 1 vCPU | 2 vCPU |
+| **RAM** | 1 GB | 2 GB |
+| **Disk** | 10 GB | 20 GB |
+| **OS** | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
+
+### Health Check
+
+The application includes a health check endpoint for monitoring:
+
+```bash
+curl http://localhost:3000/api/health
+```
+
+Response:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2026-01-13T12:00:00.000Z",
+  "version": "0.1.0",
+  "environment": "production"
+}
+```
+
+### Reverse Proxy & SSL (Nginx)
+
+For production on Hetzner or other servers, configure Nginx as a reverse proxy with SSL:
+
+1. Install Nginx and Certbot
+2. Create server block pointing to `http://127.0.0.1:3000`
+3. Obtain SSL certificate: `sudo certbot --nginx -d your-domain.com`
+
+> 📄 See [Next.js Deployment Documentation](https://nextjs.org/docs/deployment) for detailed setup instructions.
+
+---
+
+## 📚 External Documentation
+
 - [WhatsApp Cloud API Docs](https://developers.facebook.com/docs/whatsapp/cloud-api)
 - [Supabase Documentation](https://supabase.com/docs)
 - [Next.js Documentation](https://nextjs.org/docs)

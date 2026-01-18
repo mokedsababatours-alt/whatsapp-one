@@ -36,6 +36,7 @@ interface TemplatesResponse {
   lastSync?: string;
   count?: number;
   error?: string;
+  message?: string;
 }
 
 // =============================================================================

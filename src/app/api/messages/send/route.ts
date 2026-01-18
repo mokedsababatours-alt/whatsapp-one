@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import type { MessageInsert, AutomationLogInsert } from "@/types/database";
+import type { MessageInsert, AutomationLogInsert, Database } from "@/types/database";
 
 // =============================================================================
 // Types
@@ -134,7 +134,7 @@ async function logToAutomationLogs(
       cost_estimate: null,
     };
 
-    const { error: logError } = await supabase
+    const { error: logError } = await (supabase as any)
       .from("automation_logs")
       .insert(logEntry);
 
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Query contact to check session window
-    const { data: contact, error: contactError } = await supabase
+    const { data: contact, error: contactError } = await (supabase as any)
       .from("contacts")
       .select("phone_number, last_interaction_at, session_status")
       .eq("phone_number", requestBody.recipient)
@@ -231,20 +231,20 @@ export async function POST(request: NextRequest) {
 
     if (!metaResult.success) {
       // Check for session window error from Meta (error code 131047)
-      const isSessionError = metaResult.error.error?.code === 131047;
-      const errorMessage = metaResult.error.error?.message || "Meta API error";
+      const isSessionError = metaResult.error?.error?.code === 131047;
+      const errorMessage = metaResult.error?.error?.message || "Meta API error";
 
       // Log the failed attempt
       await logToAutomationLogs(
         supabase,
         contactPhone,
         "failed",
-        `Meta API error: ${errorMessage} (code: ${metaResult.error.error?.code})`
+        `Meta API error: ${errorMessage} (code: ${metaResult.error?.error?.code})`
       );
 
       if (isSessionError) {
         // Update contact session_status to expired
-        await supabase
+        await (supabase as any)
           .from("contacts")
           .update({ session_status: "expired" })
           .eq("phone_number", requestBody.recipient);
@@ -253,7 +253,7 @@ export async function POST(request: NextRequest) {
           {
             error: "Session window expired",
             message: "Session window expired. Use template message.",
-            meta_error: metaResult.error.error,
+            meta_error: metaResult.error?.error,
           },
           { status: 400 }
         );
@@ -262,7 +262,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: "Failed to send message",
-          meta_error: metaResult.error.error,
+          meta_error: metaResult.error?.error,
         },
         { status: 502 }
       );
@@ -272,7 +272,7 @@ export async function POST(request: NextRequest) {
     await logToAutomationLogs(supabase, contactPhone, "success");
 
     // 7. Extract Meta message ID from response
-    const metaMessageId = metaResult.data.messages[0]?.id;
+    const metaMessageId = metaResult.data?.messages[0]?.id;
 
     // 8. Insert message record into database
     const messageInsert: MessageInsert = {
@@ -286,7 +286,7 @@ export async function POST(request: NextRequest) {
       source: "manual_ui",
     };
 
-    const { data: insertedMessage, error: insertError } = await supabase
+    const { data: insertedMessage, error: insertError } = await (supabase as any)
       .from("messages")
       .insert(messageInsert)
       .select()

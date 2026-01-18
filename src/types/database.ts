@@ -88,6 +88,19 @@ export interface AutomationLog {
   executed_at: string;
 }
 
+/**
+ * Settings record from the settings table
+ * Primary key: key (TEXT)
+ */
+export interface Setting {
+  /** Setting key identifier */
+  key: string;
+  /** Setting value */
+  value: string;
+  /** Last update timestamp */
+  updated_at: string;
+}
+
 // =============================================================================
 // Insert/Update Types (for creating and updating records)
 // =============================================================================
@@ -153,6 +166,15 @@ export interface AutomationLogInsert {
   executed_at?: string;
 }
 
+/**
+ * Type for inserting/updating a setting
+ */
+export interface SettingUpsert {
+  key: string;
+  value: string;
+  updated_at?: string;
+}
+
 // =============================================================================
 // Supabase Database Type (for type-safe client)
 // =============================================================================
@@ -182,6 +204,11 @@ export interface Database {
         Row: AutomationLog;
         Insert: AutomationLogInsert;
         Update: Partial<AutomationLogInsert>;
+      };
+      settings: {
+        Row: Setting;
+        Insert: SettingUpsert;
+        Update: Partial<SettingUpsert>;
       };
     };
     Views: Record<string, never>;

@@ -58,7 +58,7 @@ export function useContacts(): UseContactsReturn {
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase
+      const { data, error: fetchError } = await (supabase as any)
         .from("contacts")
         .select("*")
         .order("last_interaction_at", { ascending: false });

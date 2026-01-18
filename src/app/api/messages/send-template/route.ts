@@ -4,7 +4,7 @@ import {
   getTemplateByNameAndLanguage,
   buildTemplateDisplayText,
 } from "@/lib/templates-cache";
-import type { MessageInsert, AutomationLogInsert } from "@/types/database";
+import type { MessageInsert, AutomationLogInsert, Database } from "@/types/database";
 
 // =============================================================================
 // Types
@@ -193,7 +193,7 @@ async function logToAutomationLogs(
       cost_estimate: costEstimate ?? null,
     };
 
-    const { error: logError } = await supabase
+    const { error: logError } = await (supabase as any)
       .from("automation_logs")
       .insert(logEntry);
 
@@ -279,7 +279,7 @@ export async function POST(request: NextRequest) {
     // 5. Check if contact exists (optional - templates can initiate conversations)
     // Note: Unlike free-form messages, templates can be sent even to new contacts
     // But we still want the contact to exist in our system for tracking
-    const { data: contact } = await supabase
+    const { data: contact } = await (supabase as any)
       .from("contacts")
       .select("phone_number")
       .eq("phone_number", requestBody.recipient)
@@ -287,7 +287,7 @@ export async function POST(request: NextRequest) {
 
     // If contact doesn't exist, create it
     if (!contact) {
-      const { error: insertContactError } = await supabase
+      const { error: insertContactError } = await (supabase as any)
         .from("contacts")
         .insert({
           phone_number: requestBody.recipient,
@@ -316,9 +316,9 @@ export async function POST(request: NextRequest) {
     const metaResult = await sendTemplateToMetaAPI(metaPayload);
 
     if (!metaResult.success) {
-      console.error("Meta template send error:", metaResult.error.error);
-      const errorCode = metaResult.error.error?.code;
-      const errorMessage = metaResult.error.error?.message || "Meta API error";
+      console.error("Meta template send error:", metaResult.error?.error);
+      const errorCode = metaResult.error?.error?.code;
+      const errorMessage = metaResult.error?.error?.message || "Meta API error";
 
       await logToAutomationLogs(
         supabase,
@@ -336,7 +336,7 @@ export async function POST(request: NextRequest) {
           {
             error: "Template not found",
             message: `Template '${requestBody.templateName}' does not exist or is not approved.`,
-            meta_error: metaResult.error.error,
+            meta_error: metaResult.error?.error,
           },
           { status: 404 }
         );
@@ -348,7 +348,7 @@ export async function POST(request: NextRequest) {
           {
             error: "Invalid template parameters",
             message: "The provided components don't match the template requirements.",
-            meta_error: metaResult.error.error,
+            meta_error: metaResult.error?.error,
           },
           { status: 400 }
         );
@@ -360,7 +360,7 @@ export async function POST(request: NextRequest) {
           {
             error: "Template paused",
             message: `Template '${requestBody.templateName}' has been paused due to quality issues.`,
-            meta_error: metaResult.error.error,
+            meta_error: metaResult.error?.error,
           },
           { status: 400 }
         );
@@ -369,7 +369,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: "Failed to send template message",
-          meta_error: metaResult.error.error,
+          meta_error: metaResult.error?.error,
         },
         { status: 502 }
       );
@@ -386,7 +386,7 @@ export async function POST(request: NextRequest) {
     );
 
     // 8. Extract Meta message ID from response
-    const metaMessageId = metaResult.data.messages[0]?.id;
+    const metaMessageId = metaResult.data?.messages[0]?.id;
 
     // 9. Insert message record into database with full template body text
     const messageInsert: MessageInsert = {
@@ -400,7 +400,7 @@ export async function POST(request: NextRequest) {
       source: "manual_ui",
     };
 
-    const { data: insertedMessage, error: insertError } = await supabase
+    const { data: insertedMessage, error: insertError } = await (supabase as any)
       .from("messages")
       .insert(messageInsert)
       .select()

@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     const result = await fetchAndCacheTemplates();
 
     if (!result.success) {
-      const metaError = result.error.error;
+      const metaError = result.error?.error;
       const errorMessage = metaError?.message || "Failed to fetch templates from Meta API";
       
       return NextResponse.json(
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
         templates: result.data,
         cached: false,
         lastSync: new Date(timestamp).toISOString(),
-        count: result.data.length,
+        count: result.data?.length || 0,
       },
       { status: 200 }
     );

@@ -127,7 +127,7 @@ export async function POST() {
     }
 
     // Get admin phone from settings
-    const { data: settingsRow, error: settingsError } = await supabase
+    const { data: settingsRow, error: settingsError } = await (supabase as any)
       .from("settings")
       .select("value")
       .eq("key", "admin_phone")
@@ -146,7 +146,7 @@ export async function POST() {
     const adminPhone = settingsRow.value;
 
     // Check if notifications are enabled
-    const { data: enabledRow } = await supabase
+    const { data: enabledRow } = await (supabase as any)
       .from("settings")
       .select("value")
       .eq("key", "notification_enabled")

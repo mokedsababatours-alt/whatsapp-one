@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database";
 
 /**
  * POST /api/messages/mark-read
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Mark all inbound messages as read (only update pending, sent, or delivered messages)
     // This excludes messages already marked as read or failed
-    const { error: updateMessagesError } = await supabase
+    const { error: updateMessagesError } = await (supabase as any)
       .from("messages")
       .update({ status: "read" })
       .eq("contact_phone", contactPhone)
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Reset unread_count to 0
-    const { error: updateContactError } = await supabase
+    const { error: updateContactError } = await (supabase as any)
       .from("contacts")
       .update({ unread_count: 0 })
       .eq("phone_number", contactPhone);

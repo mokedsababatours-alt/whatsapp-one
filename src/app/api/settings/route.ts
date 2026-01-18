@@ -83,7 +83,7 @@ export async function GET() {
     }
 
     // Try to read from settings table
-    const { data: rows, error: queryError } = await supabase
+    const { data: rows, error: queryError } = await (supabase as any)
       .from("settings")
       .select("key, value, updated_at")
       .in("key", [SETTINGS_KEYS.ADMIN_PHONE, SETTINGS_KEYS.NOTIFICATION_ENABLED]);
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Upsert settings (insert or update on conflict)
-    const { error: upsertError } = await supabase
+    const { error: upsertError } = await (supabase as any)
       .from("settings")
       .upsert(updates, { onConflict: "key" });
 
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch updated settings
-    const { data: rows } = await supabase
+    const { data: rows } = await (supabase as any)
       .from("settings")
       .select("key, value, updated_at")
       .in("key", [SETTINGS_KEYS.ADMIN_PHONE, SETTINGS_KEYS.NOTIFICATION_ENABLED]);
