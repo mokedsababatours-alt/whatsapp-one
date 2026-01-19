@@ -7,11 +7,11 @@
 # =============================================================================
 
 services:
-  whatsapp-interface:
+  whatsapp-one:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: whatsapp-interface
+    container_name: whatsapp-one
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -48,7 +48,14 @@ services:
 # =============================================================================
 # Networks (optional - uncomment if using reverse proxy)
 # =============================================================================
-# networks:
-#   default:
-#     external:
-#       name: nginx-proxy
+    networks:
+      - coolify
+    labels:
+      - "coolify.managed=true"
+      - "coolify.exposedPort=3000"
+    # ------------------------------
+
+
+networks:
+  coolify:
+    external: true

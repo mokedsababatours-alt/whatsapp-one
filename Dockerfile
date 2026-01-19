@@ -64,7 +64,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 # This includes server.js, node_modules, and .next/server files
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 
+# Ensure .next directory exists and has correct permissions
+RUN mkdir -p .next && chown -R nextjs:nodejs .next
+
 # Copy static files to .next/static (standalone doesn't include static assets)
+# This must come after standalone copy to ensure .next directory exists
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Switch to non-root user
