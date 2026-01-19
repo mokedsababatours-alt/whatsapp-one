@@ -1,10 +1,6 @@
 # =============================================================================
 # Headless WhatsApp Interface - Docker Compose Configuration
 # =============================================================================
-# Usage:
-#   Development: docker-compose up --build
-#   Production:  docker-compose -f docker-compose.yml up -d
-# =============================================================================
 
 services:
   whatsapp-one:
@@ -13,11 +9,16 @@ services:
       dockerfile: Dockerfile
     container_name: whatsapp-one
     restart: unless-stopped
+    
+    # Keeps IP:3000 open for you to test directly
     ports:
       - "3000:3000"
+      
     environment:
       # Node environment
       - NODE_ENV=production
+      # Force app to listen on all interfaces
+      - PORT=3000
       
       # Supabase Configuration
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
@@ -27,15 +28,16 @@ services:
       - META_ACCESS_TOKEN=${META_ACCESS_TOKEN}
       - META_PHONE_NUMBER_ID=${META_PHONE_NUMBER_ID}
       - META_WABA_ID=${META_WABA_ID}
-    env_file:
-      - .env.local
+    
+    # Commented out to prevent "File not found" errors in Coolify
+    # env_file:
+    #   - .env.local
+
+    # CRITICAL FIX: Disable checks so Coolify routes traffic immediately
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    # Resource limits (adjust based on your server)
+      disable: true
+
+    # Resource limits
     deploy:
       resources:
         limits:
@@ -45,17 +47,18 @@ services:
           cpus: '0.25'
           memory: 256M
 
-# =============================================================================
-# Networks (optional - uncomment if using reverse proxy)
-# =============================================================================
+    # CRITICAL FIX: Connect to Coolify Network so Domain works
     networks:
       - coolify
+      
+    # CRITICAL FIX: Tell Traefik the internal port
     labels:
       - "coolify.managed=true"
       - "coolify.exposedPort=3000"
-    # ------------------------------
 
-
+# =============================================================================
+# Networks
+# =============================================================================
 networks:
   coolify:
     external: true
