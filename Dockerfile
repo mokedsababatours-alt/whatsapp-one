@@ -57,16 +57,14 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy public assets
-COPY --from=builder /app/public ./public
-
-# Set correct permissions for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
+# Copy public assets (must be at root for Next.js to find them)
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Copy standalone build output
-# The standalone output includes only the necessary files
+# This includes server.js, node_modules, and .next/server files
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+
+# Copy static files to .next/static (standalone doesn't include static assets)
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Switch to non-root user
