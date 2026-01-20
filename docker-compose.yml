@@ -29,19 +29,6 @@ services:
       - META_PHONE_NUMBER_ID=${META_PHONE_NUMBER_ID}
       - META_WABA_ID=${META_WABA_ID}
     
-    # Commented out to prevent "File not found" errors in Coolify
-    # env_file:
-    #   - .env.local
-
-    # Resource limits
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
 
     # CRITICAL FIX: Connect to Coolify Network so Domain works
     networks:
