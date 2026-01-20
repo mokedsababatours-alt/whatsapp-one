@@ -33,10 +33,6 @@ services:
     # env_file:
     #   - .env.local
 
-    # CRITICAL FIX: Disable checks so Coolify routes traffic immediately
-    healthcheck:
-      disable: true
-
     # Resource limits
     deploy:
       resources:
