@@ -46,6 +46,16 @@ export function MediaMessage({
     ? `/api/media/proxy?id=${encodeURIComponent(mediaUrl)}`
     : mediaUrl;
 
+  // Debug logging
+  if (typeof window !== 'undefined') {
+    console.log('MediaMessage:', {
+      direction,
+      mediaUrl: mediaUrl.substring(0, 50),
+      isMetaMediaId,
+      imageUrl: imageUrl.substring(0, 100)
+    });
+  }
+
   const handleLoad = useCallback(() => {
     setLoadingState("loaded");
   }, []);

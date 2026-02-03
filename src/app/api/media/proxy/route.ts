@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
+      console.log("Proxy: Authentication failed");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -25,9 +26,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    console.log("Proxy: Fetching media ID:", mediaId);
+
     // 3. Fetch media URL from Meta
     const accessToken = process.env.META_ACCESS_TOKEN;
     if (!accessToken) {
+      console.error("Proxy: META_ACCESS_TOKEN not configured!");
       throw new Error("META_ACCESS_TOKEN not configured");
     }
 
@@ -41,13 +45,20 @@ export async function GET(request: NextRequest) {
     );
 
     if (!metaMediaResponse.ok) {
+      const errorText = await metaMediaResponse.text();
+      console.error("Meta media API error:", {
+        status: metaMediaResponse.status,
+        mediaId,
+        error: errorText
+      });
+      
       if (metaMediaResponse.status === 404) {
         return NextResponse.json(
           { error: "Media expired or not found" },
           { status: 404 }
         );
       }
-      throw new Error(`Meta API error: ${metaMediaResponse.status}`);
+      throw new Error(`Meta API error: ${metaMediaResponse.status} - ${errorText}`);
     }
 
     const mediaData = await metaMediaResponse.json();
@@ -62,6 +73,11 @@ export async function GET(request: NextRequest) {
     });
 
     if (!imageResponse.ok) {
+      console.error("Failed to download image from Meta URL:", {
+        status: imageResponse.status,
+        mediaUrl,
+        mediaId
+      });
       throw new Error(`Failed to download image: ${imageResponse.status}`);
     }
 
@@ -78,8 +94,13 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Media proxy error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to fetch media" },
+      { 
+        error: "Failed to fetch media",
+        details: errorMessage,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     );
   }
