@@ -12,7 +12,7 @@ A custom, web-based chat interface that acts as a **remote control** for a headl
 - **🎛️ Control Tower** — Dashboard for monitoring n8n automations, costs, and errors
 - **⚙️ Settings** — Admin notifications, template sync, and configuration
 - **📋 Template Messaging** — Send pre-approved templates when session expires (24h rule)
-- **🖼️ Media Support** — Images, videos, audio, and documents with Supabase Storage
+- **🖼️ Media Support** — Inbound images via Meta API proxy (7-day auto-expiration), outbound images with Supabase Storage
 - **⏱️ Session Window Tracking** — Visual indicators for 24-hour messaging window
 - **🔔 Admin Notifications** — Real-time alerts for new customer messages
 

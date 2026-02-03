@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 
 interface MediaMessageProps {
-  /** URL of the media content */
+  /** URL of the media content or Meta media ID */
   mediaUrl: string;
   /** Type of media */
   type: "image" | "video" | "audio" | "document";
@@ -19,6 +19,8 @@ interface MediaMessageProps {
   caption?: string | null;
   /** Whether this is an outbound message (affects styling) */
   isOutbound?: boolean;
+  /** Message direction - determines if we use proxy or direct URL */
+  direction?: "inbound" | "outbound";
 }
 
 type LoadingState = "loading" | "loaded" | "error";
@@ -32,10 +34,17 @@ export function MediaMessage({
   type,
   caption,
   isOutbound = false,
+  direction = "outbound",
 }: MediaMessageProps) {
   const [loadingState, setLoadingState] = useState<LoadingState>("loading");
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
+
+  // Determine if this is a Meta media ID (inbound) or Supabase URL (outbound)
+  const isMetaMediaId = direction === "inbound" && !mediaUrl.startsWith("http");
+  const imageUrl = isMetaMediaId 
+    ? `/api/media/proxy?id=${encodeURIComponent(mediaUrl)}`
+    : mediaUrl;
 
   const handleLoad = useCallback(() => {
     setLoadingState("loaded");
@@ -106,7 +115,7 @@ export function MediaMessage({
         {/* Image */}
         <img
           key={retryKey}
-          src={mediaUrl}
+          src={imageUrl}
           alt={caption || "Media message"}
           onLoad={handleLoad}
           onError={handleError}
@@ -148,7 +157,7 @@ export function MediaMessage({
 
             {/* Full-size image */}
             <img
-              src={mediaUrl}
+              src={imageUrl}
               alt={caption || "Media message"}
               className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg"
             />

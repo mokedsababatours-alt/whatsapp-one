@@ -105,6 +105,7 @@ export function MessageBubble({
             type="image"
             caption={message.body}
             isOutbound={isOutbound}
+            direction={message.direction}
           />
         ) : (
           <>
