@@ -16,8 +16,10 @@ export interface UseMessagesReturn {
   messages: Message[];
   /** Whether messages are currently loading */
   isLoading: boolean;
-  /** Error message if fetch/subscription failed */
+  /** Error message if initial fetch failed (hard error - no data) */
   error: string | null;
+  /** Error message if realtime subscription failed (soft error - have cached data) */
+  realtimeError: string | null;
   /** Current connection status */
   connectionStatus: ConnectionStatus;
   /** Manually refetch messages */
@@ -37,6 +39,7 @@ export function useMessages(contactPhone: string | null): UseMessagesReturn {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [realtimeError, setRealtimeError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
   
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -114,6 +117,7 @@ export function useMessages(contactPhone: string | null): UseMessagesReturn {
     // Reset state when contact changes
     setMessages([]);
     setError(null);
+    setRealtimeError(null);
 
     if (!contactPhone) {
       setConnectionStatus("disconnected");
@@ -148,17 +152,19 @@ export function useMessages(contactPhone: string | null): UseMessagesReturn {
         handleUpdate
       );
 
-    // Track connection status
+    // Track connection status (realtime error is soft - we have cached data)
     setConnectionStatus("connecting");
 
     channel.subscribe((status) => {
       if (status === "SUBSCRIBED") {
         setConnectionStatus("connected");
+        setRealtimeError(null);
       } else if (status === "CLOSED") {
         setConnectionStatus("disconnected");
+        setRealtimeError("Realtime connection closed");
       } else if (status === "CHANNEL_ERROR") {
         setConnectionStatus("error");
-        setError("Realtime connection error");
+        setRealtimeError("Realtime connection error");
       }
     });
 
@@ -173,10 +179,23 @@ export function useMessages(contactPhone: string | null): UseMessagesReturn {
     };
   }, [contactPhone, supabase, fetchMessages, handleInsert, handleUpdate]);
 
+  // Polling fallback when realtime is disconnected - refetch every 30s to stay live
+  useEffect(() => {
+    if (!contactPhone) return;
+    if (connectionStatus !== "error" && connectionStatus !== "disconnected") {
+      return;
+    }
+    const intervalId = setInterval(() => {
+      fetchMessages();
+    }, 30000);
+    return () => clearInterval(intervalId);
+  }, [contactPhone, connectionStatus, fetchMessages]);
+
   return {
     messages,
     isLoading,
     error,
+    realtimeError,
     connectionStatus,
     refetch: fetchMessages,
   };

@@ -32,24 +32,30 @@ export function ConversationHeader({
 
   return (
     <div className="flex h-16 items-center justify-between border-b border-slate-200 px-6 bg-white">
-      {/* Left side - Contact info */}
-      <button
-        onClick={onContactClick}
-        className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-      >
-        {/* Avatar */}
-        <div className="w-10 h-10 rounded-full bg-emerald-200 flex items-center justify-center text-sm font-medium text-emerald-800">
-          {initials}
-        </div>
-
-        {/* Name and phone */}
-        <div className="text-left">
-          <h2 className="font-semibold text-slate-900">{displayName}</h2>
+      {/* Left side - Contact info (avatar clickable when onContactClick; name/phone selectable) */}
+      <div className="flex items-center gap-3">
+        {onContactClick ? (
+          <button
+            onClick={onContactClick}
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+          >
+            <div className="w-10 h-10 rounded-full bg-emerald-200 flex items-center justify-center text-sm font-medium text-emerald-800">
+              {initials}
+            </div>
+          </button>
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-emerald-200 flex items-center justify-center text-sm font-medium text-emerald-800">
+            {initials}
+          </div>
+        )}
+        {/* Name and phone - selectable for copy */}
+        <div className="text-left select-text">
+          <h2 className="font-semibold text-slate-900 select-text">{displayName}</h2>
           {contact.profile_name && (
-            <p className="text-sm text-slate-500">{contact.phone_number}</p>
+            <p className="text-sm text-slate-500 select-text">{contact.phone_number}</p>
           )}
         </div>
-      </button>
+      </div>
 
       {/* Right side - Session timer */}
       <SessionTimer lastInteractionAt={contact.last_interaction_at} />

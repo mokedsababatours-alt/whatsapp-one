@@ -39,10 +39,25 @@ export function Navigation() {
         className="flex h-full w-[60px] flex-col items-center bg-slate-900 py-4"
         aria-label="Main navigation"
       >
-        {/* Logo/Brand area */}
-        <div className="mb-8 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-600">
-          <MessageSquare className="h-5 w-5 text-white" />
-        </div>
+        {/* Logo/Brand area - clickable, navigates to Inbox */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              href="/inbox"
+              className={`mb-8 flex h-10 w-10 items-center justify-center rounded-lg transition-all duration-200 ${
+                pathname.startsWith("/inbox")
+                  ? "bg-emerald-600 text-white"
+                  : "bg-emerald-600 text-white hover:bg-emerald-700"
+              }`}
+              aria-label="Inbox"
+            >
+              <MessageSquare className="h-5 w-5" />
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={10}>
+            Inbox
+          </TooltipContent>
+        </Tooltip>
 
         {/* Navigation items */}
         <div className="flex flex-1 flex-col items-center gap-2">

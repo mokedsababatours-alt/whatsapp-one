@@ -103,12 +103,12 @@ export function ContactListItem({ contact, isSelected, onClick }: ContactListIte
         />
       </div>
 
-      {/* Contact info */}
-      <div className="flex-1 min-w-0">
+      {/* Contact info - selectable for copy */}
+      <div className="flex-1 min-w-0 select-text">
         <div className="flex items-center justify-between gap-2">
           <span
             className={cn(
-              "font-medium truncate",
+              "font-medium truncate select-text",
               isSelected ? "text-emerald-900" : "text-slate-900"
             )}
           >
@@ -125,7 +125,7 @@ export function ContactListItem({ contact, isSelected, onClick }: ContactListIte
         
         {/* Secondary line - phone if name exists, or placeholder text */}
         <div className="flex items-center justify-between gap-2 mt-0.5">
-          <span className="text-sm text-slate-500 truncate">
+          <span className="text-sm text-slate-500 truncate select-text">
             {contact.profile_name ? contact.phone_number : "No messages yet"}
           </span>
           

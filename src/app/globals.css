@@ -122,6 +122,12 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Pointer cursor for clickable elements */
+  button,
+  a[href],
+  [role="button"] {
+    cursor: pointer;
+  }
 }
 
 /* Shimmer animation for loading states */

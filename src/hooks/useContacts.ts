@@ -16,8 +16,10 @@ export interface UseContactsReturn {
   contacts: Contact[];
   /** Whether contacts are currently loading */
   isLoading: boolean;
-  /** Error message if fetch/subscription failed */
+  /** Error message if initial fetch failed (hard error - no data) */
   error: string | null;
+  /** Error message if realtime subscription failed (soft error - have cached data) */
+  realtimeError: string | null;
   /** Current connection status */
   connectionStatus: ConnectionStatus;
   /** Manually refetch contacts */
@@ -47,6 +49,7 @@ export function useContacts(): UseContactsReturn {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [realtimeError, setRealtimeError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
   
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -133,15 +136,17 @@ export function useContacts(): UseContactsReturn {
         handleUpdate
       );
 
-    // Track connection status
+    // Track connection status (realtime error is soft - we have cached data)
     channel.subscribe((status) => {
       if (status === "SUBSCRIBED") {
         setConnectionStatus("connected");
+        setRealtimeError(null);
       } else if (status === "CLOSED") {
         setConnectionStatus("disconnected");
+        setRealtimeError("Realtime connection closed");
       } else if (status === "CHANNEL_ERROR") {
         setConnectionStatus("error");
-        setError("Realtime connection error");
+        setRealtimeError("Realtime connection error");
       }
     });
 
@@ -156,10 +161,25 @@ export function useContacts(): UseContactsReturn {
     };
   }, [supabase, fetchContacts, handleInsert, handleUpdate]);
 
+  // Polling fallback when realtime is disconnected - refetch every 30s to stay live
+  useEffect(() => {
+    if (connectionStatus !== "error" && connectionStatus !== "disconnected") {
+      return;
+    }
+    if (contacts.length === 0) {
+      return; // No cached data, don't poll (initial load or hard error)
+    }
+    const intervalId = setInterval(() => {
+      fetchContacts();
+    }, 30000);
+    return () => clearInterval(intervalId);
+  }, [connectionStatus, contacts.length, fetchContacts]);
+
   return {
     contacts,
     isLoading,
     error,
+    realtimeError,
     connectionStatus,
     refetch: fetchContacts,
   };

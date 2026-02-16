@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { RefreshCw } from "lucide-react";
 import { ContactList } from "@/components/inbox/ContactList";
 import { ConversationView } from "@/components/inbox/ConversationView";
 import { TemplateSelector } from "@/components/inbox/TemplateSelector";
@@ -48,13 +49,21 @@ export default function InboxPage() {
   const [isTemplateSelectorOpen, setIsTemplateSelectorOpen] = useState(false);
 
   // Fetch real contacts from Supabase
-  const { contacts, isLoading: isLoadingContacts, error: contactsError } = useContacts();
+  const {
+    contacts,
+    isLoading: isLoadingContacts,
+    error: contactsError,
+    realtimeError: contactsRealtimeError,
+    refetch: refetchContacts,
+  } = useContacts();
 
   // Fetch messages for selected contact
   const {
     messages,
     isLoading: isLoadingMessages,
     error: messagesError,
+    realtimeError: messagesRealtimeError,
+    refetch: refetchMessages,
   } = useMessages(selectedContact?.phone_number || null);
 
   // Mark messages as read when a contact is selected
@@ -316,36 +325,72 @@ export default function InboxPage() {
     [selectedContact]
   );
 
-  // Show error state if contacts fail to load
-  if (contactsError && !isLoadingContacts) {
+  // Hard error: initial fetch failed (no contacts at all)
+  const hasContactsHardError = contactsError && !isLoadingContacts && contacts.length === 0;
+  if (hasContactsHardError) {
     return (
-      <div className="flex flex-1 items-center justify-center">
+      <div className="flex flex-1 flex-col items-center justify-center gap-4">
         <div className="text-center">
-          <p className="text-red-600 mb-2">Failed to load contacts</p>
-          <p className="text-sm text-slate-500">{contactsError}</p>
+          <p className="text-red-600 mb-2 font-medium">Failed to load contacts</p>
+          <p className="text-sm text-slate-500 mb-4">{contactsError}</p>
+          <button
+            onClick={() => refetchContacts()}
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Retry
+          </button>
         </div>
       </div>
     );
   }
 
+  // Soft error: realtime failed but we have cached contacts - show banner
+  const hasRealtimeIssue = contactsRealtimeError || messagesRealtimeError;
+  const handleRetry = useCallback(() => {
+    refetchContacts();
+    if (selectedContact) {
+      refetchMessages();
+    }
+  }, [refetchContacts, refetchMessages, selectedContact]);
+
   return (
     <>
-      {/* Middle Panel - Contact List */}
-      <ContactList
-        contacts={contacts}
-        selectedContact={selectedContact}
-        onSelectContact={handleSelectContact}
-        onStartNewChat={handleStartNewChat}
-      />
-
-      {/* Right Panel - Conversation View */}
-      <ConversationView
-        selectedContact={selectedContact}
-        messages={messages}
-        onSendMessage={handleSendMessage}
-        onSendImage={handleSendImage}
-        onSendTemplate={handleSendTemplate}
-      />
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+        {/* Realtime connection warning banner - non-blocking */}
+        {hasRealtimeIssue && (
+          <div className="flex flex-shrink-0 items-center justify-between gap-4 bg-amber-50 border-b border-amber-200 px-4 py-2 text-sm text-amber-800">
+            <span>
+              {contactsRealtimeError && messagesRealtimeError
+                ? "Connection issues – some updates may be delayed."
+                : contactsRealtimeError || messagesRealtimeError}
+            </span>
+            <button
+              onClick={handleRetry}
+              className="inline-flex items-center gap-1.5 rounded-md bg-amber-200 px-3 py-1.5 text-amber-900 hover:bg-amber-300 transition-colors font-medium"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Retry
+            </button>
+          </div>
+        )}
+        {/* Main content: Contact List + Conversation View */}
+        <div className="flex flex-1 min-w-0 overflow-hidden">
+          <ContactList
+            contacts={contacts}
+            selectedContact={selectedContact}
+            onSelectContact={handleSelectContact}
+            onStartNewChat={handleStartNewChat}
+          />
+          <ConversationView
+            selectedContact={selectedContact}
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            onSendImage={handleSendImage}
+            onSendTemplate={handleSendTemplate}
+          />
+        </div>
+      </div>
 
       {/* Template Selector Modal */}
       {selectedContact && (
