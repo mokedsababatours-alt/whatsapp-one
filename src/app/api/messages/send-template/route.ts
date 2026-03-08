@@ -422,6 +422,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Update contact's has_manual_messages flag
+    await (supabase as any)
+      .from("contacts")
+      .update({ has_manual_messages: true })
+      .eq("phone_number", requestBody.recipient);
+
     // 10. Return success response with full body text for UI display
     return NextResponse.json(
       {

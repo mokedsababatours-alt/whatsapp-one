@@ -52,9 +52,14 @@ export default function InboxPage() {
   const {
     contacts,
     isLoading: isLoadingContacts,
+    isLoadingMore,
+    hasMore,
     error: contactsError,
     realtimeError: contactsRealtimeError,
     refetch: refetchContacts,
+    loadMore,
+    filter,
+    setFilter,
   } = useContacts();
 
   // Fetch messages for selected contact
@@ -115,6 +120,7 @@ export default function InboxPage() {
       last_interaction_at: null,
       session_status: "expired",
       unread_count: 0,
+      has_manual_messages: false,
       created_at: new Date().toISOString(),
     });
     return true;
@@ -356,7 +362,7 @@ export default function InboxPage() {
 
   return (
     <>
-      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+      <div className="flex flex-col h-full w-full overflow-hidden">
         {/* Realtime connection warning banner - non-blocking */}
         {hasRealtimeIssue && (
           <div className="flex flex-shrink-0 items-center justify-between gap-4 bg-amber-50 border-b border-amber-200 px-4 py-2 text-sm text-amber-800">
@@ -375,12 +381,17 @@ export default function InboxPage() {
           </div>
         )}
         {/* Main content: Contact List + Conversation View */}
-        <div className="flex flex-1 min-w-0 overflow-hidden">
+        <div className="flex flex-1 min-h-0 overflow-hidden">
           <ContactList
             contacts={contacts}
             selectedContact={selectedContact}
             onSelectContact={handleSelectContact}
             onStartNewChat={handleStartNewChat}
+            filter={filter}
+            onFilterChange={setFilter}
+            hasMore={hasMore}
+            onLoadMore={loadMore}
+            isLoadingMore={isLoadingMore}
           />
           <ConversationView
             selectedContact={selectedContact}

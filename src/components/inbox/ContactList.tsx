@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useMemo, type KeyboardEvent } from "react";
-import { Search, Users, MessageSquarePlus } from "lucide-react";
+import { useState, useMemo, useRef, useEffect, type KeyboardEvent } from "react";
+import { Search, Users, MessageSquarePlus, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContactListItem } from "./ContactListItem";
 import { normalizePhoneToE164 } from "@/lib/phone";
 import type { Contact } from "@/types";
+import type { ContactFilter } from "@/app/api/contacts/list/route";
 
 interface ContactListProps {
   /** Array of contacts to display */
@@ -17,6 +19,16 @@ interface ContactListProps {
   onSelectContact: (contact: Contact) => void;
   /** Callback when starting a new chat by phone number */
   onStartNewChat?: (phoneNumber: string) => Promise<boolean> | boolean;
+  /** Current filter */
+  filter: ContactFilter;
+  /** Callback to change filter */
+  onFilterChange: (filter: ContactFilter) => void;
+  /** Whether there are more contacts to load */
+  hasMore: boolean;
+  /** Callback to load more contacts */
+  onLoadMore: () => void;
+  /** Whether more contacts are currently loading */
+  isLoadingMore: boolean;
 }
 
 /**
@@ -28,8 +40,15 @@ export function ContactList({
   selectedContact,
   onSelectContact,
   onStartNewChat,
+  filter,
+  onFilterChange,
+  hasMore,
+  onLoadMore,
+  isLoadingMore,
 }: ContactListProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
+  
   const normalizedSearch = useMemo(
     () => normalizePhoneToE164(searchQuery),
     [searchQuery]
@@ -38,6 +57,34 @@ export function ContactList({
     () => searchQuery.replace(/\D/g, "").length,
     [searchQuery]
   );
+
+  // Intersection observer for infinite scroll
+  useEffect(() => {
+    const trigger = loadMoreTriggerRef.current;
+    if (!trigger || !hasMore || isLoadingMore) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting) {
+          onLoadMore();
+        }
+      },
+      {
+        root: null,
+        rootMargin: "200px",
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(trigger);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMore, isLoadingMore, onLoadMore]);
 
   // Calculate total unread count
   const totalUnread = useMemo(() => {
@@ -125,6 +172,23 @@ export function ContactList({
         </span>
       </div>
 
+      {/* Filter Tabs */}
+      <div className="flex-shrink-0 border-b border-slate-200 bg-slate-50 px-3 pt-3 pb-2">
+        <Tabs defaultValue="all" value={filter} onValueChange={(value) => onFilterChange(value as ContactFilter)}>
+          <TabsList className="w-full grid grid-cols-3">
+            <TabsTrigger value="all" className="text-xs">
+              All
+            </TabsTrigger>
+            <TabsTrigger value="unread" className="text-xs">
+              Unread
+            </TabsTrigger>
+            <TabsTrigger value="manual" className="text-xs">
+              Manual
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
       {/* Search - Sticky */}
       <div className="sticky top-0 z-10 bg-slate-50 p-3 border-b border-slate-100">
         <div className="relative">
@@ -141,7 +205,7 @@ export function ContactList({
       </div>
 
       {/* Contact List */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 overflow-hidden">
         <div className="p-2">
           {canStartNewChat && normalizedSearch && (
             <button
@@ -161,16 +225,30 @@ export function ContactList({
             </button>
           )}
           {filteredContacts.length > 0 ? (
-            <div className="space-y-1">
-              {filteredContacts.map((contact) => (
-                <ContactListItem
-                  key={contact.phone_number}
-                  contact={contact}
-                  isSelected={selectedContact?.phone_number === contact.phone_number}
-                  onClick={handleSelect}
-                />
-              ))}
-            </div>
+            <>
+              <div className="space-y-1">
+                {filteredContacts.map((contact) => (
+                  <ContactListItem
+                    key={contact.phone_number}
+                    contact={contact}
+                    isSelected={selectedContact?.phone_number === contact.phone_number}
+                    onClick={handleSelect}
+                  />
+                ))}
+              </div>
+              
+              {/* Infinite scroll trigger */}
+              {hasMore && (
+                <div ref={loadMoreTriggerRef} className="py-4 text-center">
+                  {isLoadingMore && (
+                    <div className="flex items-center justify-center gap-2 text-slate-500">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm">Loading more...</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           ) : (
             // Empty state
             <div className="flex flex-col items-center justify-center py-12 text-center">

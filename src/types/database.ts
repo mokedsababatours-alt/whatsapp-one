@@ -36,6 +36,8 @@ export interface Contact {
   session_status: SessionStatus;
   /** Unread message counter */
   unread_count: number;
+  /** True if contact has received manual messages or sent inbound messages */
+  has_manual_messages: boolean;
   /** Record creation timestamp */
   created_at: string;
 }
@@ -114,6 +116,7 @@ export interface ContactInsert {
   last_interaction_at?: string | null;
   session_status?: SessionStatus;
   unread_count?: number;
+  has_manual_messages?: boolean;
   created_at?: string;
 }
 
@@ -126,6 +129,7 @@ export interface ContactUpdate {
   last_interaction_at?: string | null;
   session_status?: SessionStatus;
   unread_count?: number;
+  has_manual_messages?: boolean;
 }
 
 /**
